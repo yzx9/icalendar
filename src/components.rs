@@ -20,6 +20,26 @@ pub use other::*;
 pub use todo::*;
 pub use venue::*;
 
+const COMP_VEVENT: &str = "VEVENT";
+const COMP_VTODO: &str = "VTODO";
+const COMP_VVENUE: &str = "VVENUE";
+const COMP_VALARM: &str = "VALARM";
+
+const PROP_DTSTAMP: &str = "DTSTAMP";
+const PROP_UID: &str = "UID";
+const PROP_DTSTART: &str = "DTSTART";
+const PROP_DTEND: &str = "DTEND";
+const PROP_RECURRENCE_ID: &str = "RECURRENCE-ID";
+const PROP_PRIORITY: &str = "PRIORITY";
+const PROP_SUMMARY: &str = "SUMMARY";
+const PROP_DESCRIPTION: &str = "DESCRIPTION";
+const PROP_SEQUENCE: &str = "SEQUENCE";
+const PROP_CLASS: &str = "CLASS";
+const PROP_URL: &str = "URL";
+const PROP_LAST_MODIFIED: &str = "LAST-MODIFIED";
+const PROP_CREATED: &str = "CREATED";
+const PROP_LOCATION: &str = "LOCATION";
+
 #[derive(Debug, Default, PartialEq, Eq, Clone)]
 pub(crate) struct InnerComponent {
     pub properties: BTreeMap<String, Property>,
@@ -94,17 +114,17 @@ pub trait Component {
     fn fmt_write<W: fmt::Write>(&self, out: &mut W) -> Result<(), fmt::Error> {
         write_crlf!(out, "BEGIN:{}", self.component_kind())?;
 
-        if !self.properties().contains_key("DTSTAMP") {
+        if !self.properties().contains_key(PROP_DTSTAMP) {
             let now = Utc::now();
-            write_crlf!(out, "DTSTAMP:{}", format_utc_date_time(now))?;
+            write_crlf!(out, "{}:{}", PROP_DTSTAMP, format_utc_date_time(now))?;
         }
 
         for property in self.properties().values() {
             property.fmt_write(out)?;
         }
 
-        if !self.properties().contains_key("UID") {
-            write_crlf!(out, "UID:{}", Uuid::new_v4())?;
+        if !self.properties().contains_key(PROP_UID) {
+            write_crlf!(out, "{}:{}", PROP_UID, Uuid::new_v4())?;
         }
 
         for property in self.multi_properties().values().flatten() {
@@ -170,32 +190,32 @@ pub trait Component {
     ///
     /// This must be a UTC date-time value.
     fn timestamp(&mut self, dt: DateTime<Utc>) -> &mut Self {
-        self.add_property("DTSTAMP", format_utc_date_time(dt))
+        self.add_property(PROP_DTSTAMP, format_utc_date_time(dt))
     }
 
     /// Remove the [`DTSTAMP`](https://datatracker.ietf.org/doc/html/rfc5545#section-3.8.7.2) [`Property`]
     fn remove_timestamp(&mut self) -> &mut Self {
-        self.remove_property("DTSTAMP")
+        self.remove_property(PROP_DTSTAMP)
     }
 
     /// Gets the [`DTSTAMP`](https://datatracker.ietf.org/doc/html/rfc5545#section-3.8.7.2) property.
     fn get_timestamp(&self) -> Option<DateTime<Utc>> {
-        parse_utc_date_time(self.property_value("DTSTAMP")?)
+        parse_utc_date_time(self.property_value(PROP_DTSTAMP)?)
     }
 
     /// Gets the [`DTSTART`](https://datatracker.ietf.org/doc/html/rfc5545#section-3.8.2.4) [`Property`]
     fn get_start(&self) -> Option<DatePerhapsTime> {
-        DatePerhapsTime::from_property(self.properties().get("DTSTART")?)
+        DatePerhapsTime::from_property(self.properties().get(PROP_DTSTART)?)
     }
 
     /// Gets the [`RECURRENCE-ID`](https://datatracker.ietf.org/doc/html/rfc5545#section-3.8.4.4) property.
     fn get_recurrence_id(&self) -> Option<DatePerhapsTime> {
-        DatePerhapsTime::from_property(self.properties().get("RECURRENCE-ID")?)
+        DatePerhapsTime::from_property(self.properties().get(PROP_RECURRENCE_ID)?)
     }
 
     /// Gets the [`DTEND`](https://datatracker.ietf.org/doc/html/rfc5545#section-3.8.2.2) [`Property`]
     fn get_end(&self) -> Option<DatePerhapsTime> {
-        DatePerhapsTime::from_property(self.properties().get("DTEND")?)
+        DatePerhapsTime::from_property(self.properties().get(PROP_DTEND)?)
     }
 
     /// Defines the relative priority.
@@ -203,12 +223,12 @@ pub trait Component {
     /// Ranges from 0 to 10, larger values will be truncated
     fn priority(&mut self, priority: u32) -> &mut Self {
         let priority = std::cmp::min(priority, 10);
-        self.add_property("PRIORITY", priority.to_string())
+        self.add_property(PROP_PRIORITY, priority.to_string())
     }
 
     /// Removes the relative priority.
     fn remove_priority(&mut self) -> &mut Self {
-        self.remove_property("PRIORITY")
+        self.remove_property(PROP_PRIORITY)
     }
 
     // /// Add the [`ATTACH`](https://datatracker.ietf.org/doc/html/rfc5545#section-3.8.1.1) property
@@ -222,7 +242,7 @@ pub trait Component {
     ///
     /// Ranges from 0 to 10.
     fn get_priority(&self) -> Option<u32> {
-        let priority = self.property_value("PRIORITY")?.parse().ok()?;
+        let priority = self.property_value(PROP_PRIORITY)?.parse().ok()?;
         if priority <= 10 {
             Some(priority)
         } else {
@@ -240,32 +260,32 @@ pub trait Component {
 
     /// Set the summary
     fn summary(&mut self, desc: &str) -> &mut Self {
-        self.add_property("SUMMARY", desc)
+        self.add_property(PROP_SUMMARY, desc)
     }
 
     /// Removes the summary
     fn remove_summary(&mut self) -> &mut Self {
-        self.remove_property("SUMMARY")
+        self.remove_property(PROP_SUMMARY)
     }
 
     /// Gets the summary
     fn get_summary(&self) -> Option<&str> {
-        self.property_value("SUMMARY")
+        self.property_value(PROP_SUMMARY)
     }
 
     /// Set the description
     fn description(&mut self, desc: &str) -> &mut Self {
-        self.add_property("DESCRIPTION", desc)
+        self.add_property(PROP_DESCRIPTION, desc)
     }
 
     /// Removes the description
     fn remove_description(&mut self) -> &mut Self {
-        self.remove_property("DESCRIPTION")
+        self.remove_property(PROP_DESCRIPTION)
     }
 
     /// Gets the description
     fn get_description(&self) -> Option<&str> {
-        self.property_value("DESCRIPTION")
+        self.property_value(PROP_DESCRIPTION)
     }
 
     ///// Set the description
@@ -276,27 +296,28 @@ pub trait Component {
 
     /// Set the UID
     fn uid(&mut self, uid: &str) -> &mut Self {
-        self.add_property("UID", uid)
+        self.add_property(PROP_UID, uid)
     }
 
     /// Gets the UID
     fn get_uid(&self) -> Option<&str> {
-        self.property_value("UID")
+        self.property_value(PROP_UID)
     }
 
     /// Set the sequence
     fn sequence(&mut self, sequence: u32) -> &mut Self {
-        self.add_property("SEQUENCE", sequence.to_string())
+        self.add_property(PROP_SEQUENCE, sequence.to_string())
     }
 
     /// Removes the sequence
     fn remove_sequence(&mut self) -> &mut Self {
-        self.remove_property("SEQUENCE")
+        self.remove_property(PROP_SEQUENCE)
     }
 
     /// Gets the sequence
     fn get_sequence(&self) -> Option<u32> {
-        self.property_value("SEQUENCE").and_then(|s| s.parse().ok())
+        self.property_value(PROP_SEQUENCE)
+            .and_then(|s| s.parse().ok())
     }
 
     /// Set the visibility class
@@ -306,61 +327,61 @@ pub trait Component {
 
     /// Removes the visibility class
     fn remove_class(&mut self) -> &mut Self {
-        self.remove_property("CLASS")
+        self.remove_property(PROP_CLASS)
     }
 
     /// Gets the visibility class
     fn get_class(&self) -> Option<Class> {
-        Class::from_str(self.property_value("CLASS")?)
+        Class::from_str(self.property_value(PROP_CLASS)?)
     }
 
     /// Sets the URL.
     fn url(&mut self, url: &str) -> &mut Self {
-        self.add_property("URL", url)
+        self.add_property(PROP_URL, url)
     }
 
     /// Removes the URL.
     fn remove_url(&mut self) -> &mut Self {
-        self.remove_property("URL")
+        self.remove_property(PROP_URL)
     }
 
     /// Gets the URL.
     fn get_url(&self) -> Option<&str> {
-        self.property_value("URL")
+        self.property_value(PROP_URL)
     }
 
     /// Set the [`LAST-MODIFIED`](https://datatracker.ietf.org/doc/html/rfc5545#section-3.8.7.3) [`Property`]
     ///
     /// This must be a UTC date-time value.
     fn last_modified(&mut self, dt: DateTime<Utc>) -> &mut Self {
-        self.add_property("LAST-MODIFIED", format_utc_date_time(dt))
+        self.add_property(PROP_LAST_MODIFIED, format_utc_date_time(dt))
     }
 
     /// Removes the [`LAST-MODIFIED`](https://datatracker.ietf.org/doc/html/rfc5545#section-3.8.7.3) [`Property`]
     fn remove_last_modified(&mut self) -> &mut Self {
-        self.remove_property("LAST-MODIFIED")
+        self.remove_property(PROP_LAST_MODIFIED)
     }
 
     /// Gets the [`LAST-MODIFIED`](https://datatracker.ietf.org/doc/html/rfc5545#section-3.8.7.3) property.
     fn get_last_modified(&self) -> Option<DateTime<Utc>> {
-        parse_utc_date_time(self.property_value("LAST-MODIFIED")?)
+        parse_utc_date_time(self.property_value(PROP_LAST_MODIFIED)?)
     }
 
     /// Set the [`CREATED`](https://datatracker.ietf.org/doc/html/rfc5545#section-3.8.7.1) [`Property`]
     ///
     /// This must be a UTC date-time value.
     fn created(&mut self, dt: DateTime<Utc>) -> &mut Self {
-        self.add_property("CREATED", format_utc_date_time(dt))
+        self.add_property(PROP_CREATED, format_utc_date_time(dt))
     }
 
     /// Removes the [`CREATED`](https://datatracker.ietf.org/doc/html/rfc5545#section-3.8.7.1) [`Property`]
     fn remove_created(&mut self) -> &mut Self {
-        self.remove_property("CREATED")
+        self.remove_property(PROP_CREATED)
     }
 
     /// Gets the [`CREATED`](https://datatracker.ietf.org/doc/html/rfc5545#section-3.8.7.1) property.
     fn get_created(&self) -> Option<DateTime<Utc>> {
-        parse_utc_date_time(self.property_value("CREATED")?)
+        parse_utc_date_time(self.property_value(PROP_CREATED)?)
     }
 }
 
@@ -371,12 +392,12 @@ pub trait EventLike: Component {
     /// See [`DatePerhapsTime`] for info how are different [`chrono`] types converted automatically.
     fn starts<T: Into<DatePerhapsTime>>(&mut self, dt: T) -> &mut Self {
         let calendar_dt = dt.into();
-        self.append_property(calendar_dt.to_property("DTSTART"))
+        self.append_property(calendar_dt.to_property(PROP_DTSTART))
     }
 
     /// removes the [`DTSTART`](https://datatracker.ietf.org/doc/html/rfc5545#section-3.8.2.4) [`Property`]
     fn remove_starts(&mut self) -> &mut Self {
-        self.remove_property("DTSTART")
+        self.remove_property(PROP_DTSTART)
     }
 
     /// Set the [`DTEND`](https://datatracker.ietf.org/doc/html/rfc5545#section-3.8.2.2) [`Property`]
@@ -384,12 +405,12 @@ pub trait EventLike: Component {
     /// See [`DatePerhapsTime`] for info how are different [`chrono`] types converted automatically.
     fn ends<T: Into<DatePerhapsTime>>(&mut self, dt: T) -> &mut Self {
         let calendar_dt = dt.into();
-        self.append_property(calendar_dt.to_property("DTEND"))
+        self.append_property(calendar_dt.to_property(PROP_DTEND))
     }
 
     /// Removes the [`DTEND`](https://datatracker.ietf.org/doc/html/rfc5545#section-3.8.2.2) [`Property`]
     fn remove_ends(&mut self) -> &mut Self {
-        self.remove_property("DTEND")
+        self.remove_property(PROP_DTEND)
     }
 
     /// Sets the [`RECURRENCE-ID`](https://datatracker.ietf.org/doc/html/rfc5545#section-3.8.4.4)
@@ -398,28 +419,28 @@ pub trait EventLike: Component {
     /// See [`DatePerhapsTime`] for info how are different [`chrono`] types converted automatically.
     fn recurrence_id<T: Into<DatePerhapsTime>>(&mut self, dt: T) -> &mut Self {
         let calendar_dt = dt.into();
-        self.append_property(calendar_dt.to_property("RECURRENCE-ID"))
+        self.append_property(calendar_dt.to_property(PROP_RECURRENCE_ID))
     }
 
     /// Removes the [`RECURRENCE-ID`](https://datatracker.ietf.org/doc/html/rfc5545#section-3.8.4.4)
     fn remove_recurrence_id(&mut self) -> &mut Self {
-        self.remove_property("RECURRENCE-ID")
+        self.remove_property(PROP_RECURRENCE_ID)
     }
 
     /// Set the [`DTSTART`](https://datatracker.ietf.org/doc/html/rfc5545#section-3.8.2.4) [`Property`]
     /// and [`DTEND`](https://datatracker.ietf.org/doc/html/rfc5545#section-3.8.2.2) [`Property`],
     /// date only
     fn all_day(&mut self, date: NaiveDate) -> &mut Self {
-        self.append_property(naive_date_to_property(date, "DTSTART"))
-            .append_property(naive_date_to_property(date, "DTEND"))
+        self.append_property(naive_date_to_property(date, PROP_DTSTART))
+            .append_property(naive_date_to_property(date, PROP_DTEND))
     }
 
     /// Set the LOCATION with a VVENUE UID
     /// iCalender venue draft
     fn venue(&mut self, location: &str, venue_uid: &str) -> &mut Self {
         self.append_property(
-            Property::new("LOCATION", location)
-                .append_parameter(Parameter::new("VVENUE", venue_uid))
+            Property::new(PROP_LOCATION, location)
+                .append_parameter(Parameter::new(COMP_VVENUE, venue_uid))
                 .done(),
         );
         self
@@ -428,17 +449,17 @@ pub trait EventLike: Component {
     /// Set the LOCATION
     /// 3.8.1.7.  Location
     fn location(&mut self, location: &str) -> &mut Self {
-        self.add_property("LOCATION", location)
+        self.add_property(PROP_LOCATION, location)
     }
 
     /// Removes the LOCATION with a VVENUE UID
     fn remove_location(&mut self) -> &mut Self {
-        self.remove_property("LOCATION")
+        self.remove_property(PROP_LOCATION)
     }
 
     /// Gets the location
     fn get_location(&self) -> Option<&str> {
-        self.property_value("LOCATION")
+        self.property_value(PROP_LOCATION)
     }
 
     /// Set the ALARM for this event
@@ -535,14 +556,14 @@ macro_rules! component_impl {
     };
 }
 
-component_impl! { Event, String::from("VEVENT") }
+component_impl! { Event, String::from(COMP_VEVENT) }
 event_impl! { Event }
 
-component_impl! { Todo , String::from("VTODO")}
+component_impl! { Todo , String::from(COMP_VTODO)}
 event_impl! { Todo}
 
-component_impl! { Venue , String::from("VVENUE")}
-component_impl! { Alarm, String::from("VALARM") }
+component_impl! { Venue , String::from(COMP_VVENUE)}
+component_impl! { Alarm, String::from(COMP_VALARM) }
 
 #[cfg(test)]
 mod tests {
